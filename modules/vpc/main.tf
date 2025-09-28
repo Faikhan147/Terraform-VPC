@@ -52,7 +52,7 @@ resource "aws_route_table_association" "public" {
 # Basic SG
 resource "aws_security_group" "vpc_sg" {
   name        = "${var.env}-vpc-sg"
-  description = "Default SG for ${var.env} VPC"
+  description = "Additional SG for ${var.env} VPC"
   vpc_id      = aws_vpc.this.id
 
   ingress {
