@@ -49,11 +49,11 @@ policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWa
 
 
 # Basic default security group
-resource "aws_security_group" "default_sg" {
-name = "${var.env}-default-sg"
-description = "Default SG for ${var.env}"
+resource "aws_security_group" "vpc_sg" {
+name = "${var.env}-vpc-sg"
+description = "VPC SG for ${var.env}"
 vpc_id = aws_vpc.this.id
-tags = { Name = "${var.env}-default-sg" }
+tags = { Name = "${var.env}-vpc-sg" }
 
 
 ingress {
