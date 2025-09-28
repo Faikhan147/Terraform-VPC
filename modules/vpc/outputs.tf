@@ -1,18 +1,15 @@
 output "vpc_id" {
-value = aws_vpc.this.id
+  value = aws_vpc.this.id
 }
-
 
 output "public_subnet_ids" {
-value = values(aws_subnet.public).* .id
+  value = [for s in aws_subnet.public : s.id]
 }
-
 
 output "private_subnet_ids" {
-value = values(aws_subnet.private).* .id
+  value = [for s in aws_subnet.private : s.id]
 }
 
-
-output "nat_gateway_ids" {
-value = values(aws_nat_gateway.nat).* .id
+output "security_group_id" {
+  value = aws_security_group.vpc_sg.id
 }
