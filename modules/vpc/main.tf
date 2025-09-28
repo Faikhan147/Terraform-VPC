@@ -1,74 +1,73 @@
-locals {
-vpc_endpoint_type = "Gateway"
-route_table_ids = concat([aws_route_table.public.id], values(aws_route_table.private).* .id)
-tags = { Name = "${var.env}-dynamodb-endpoint" }
+# Create VPC
+resource "aws_vpc" "this" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+  tags                 = merge(var.tags, { Name = "${var.env}-vpc" })
 }
 
-
-# Flow logs (optional) -> to CloudWatch Logs (create log group)
-resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
-count = var.enable_flow_logs ? 1 : 0
-name = "/aws/vpc/flow-logs/${var.env}-${aws_vpc.this.id}"
-retention_in_days = 90
+# Public subnets
+resource "aws_subnet" "public" {
+  for_each = toset(var.public_subnets)
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = each.value
+  availability_zone       = element(var.azs, index(var.public_subnets, each.value))
+  map_public_ip_on_launch = true
+  tags                    = merge(var.tags, { Name = "${var.env}-public-${each.key}" })
 }
 
-
-resource "aws_flow_log" "vpc" {
-count = var.enable_flow_logs ? 1 : 0
-log_destination_type = "cloud-watch-logs"
-log_group_name = aws_cloudwatch_log_group.vpc_flow_logs[0].name
-iam_role_arn = aws_iam_role.vpc_flow_logs.arn
-resource_id = aws_vpc.this.id
-traffic_type = "ALL"
+# Private subnets
+resource "aws_subnet" "private" {
+  for_each = toset(var.private_subnets)
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = each.value
+  availability_zone = element(var.azs, index(var.private_subnets, each.value))
+  tags              = merge(var.tags, { Name = "${var.env}-private-${each.key}" })
 }
 
-
-resource "aws_iam_role" "vpc_flow_logs" {
-count = var.enable_flow_logs ? 1 : 0
-name = "${var.env}-vpc-flow-logs-role"
-assume_role_policy = data.aws_iam_policy_document.vpc_flow_logs_assume.json
+# Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.this.id
+  tags   = merge(var.tags, { Name = "${var.env}-igw" })
 }
 
-
-data "aws_iam_policy_document" "vpc_flow_logs_assume" {
-statement {
-actions = ["sts:AssumeRole"]
-principals {
-type = "Service"
-identifiers = ["vpc-flow-logs.amazonaws.com"]
-}
-}
+# Public Route Table
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+  tags   = merge(var.tags, { Name = "${var.env}-public-rt" })
 }
 
-
-resource "aws_iam_role_policy_attachment" "flow_logs_attach" {
-count = var.enable_flow_logs ? 1 : 0
-role = aws_iam_role.vpc_flow_logs[0].name
-policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs" # replace if needed
+resource "aws_route" "public_internet" {
+  route_table_id         = aws_route_table.public.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.igw.id
 }
 
+resource "aws_route_table_association" "public" {
+  for_each       = aws_subnet.public
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.public.id
+}
 
-# Basic default security group
+# Basic SG
 resource "aws_security_group" "vpc_sg" {
-name = "${var.env}-vpc-sg"
-description = "VPC SG for ${var.env}"
-vpc_id = aws_vpc.this.id
-tags = { Name = "${var.env}-vpc-sg" }
+  name        = "${var.env}-vpc-sg"
+  description = "Default SG for ${var.env} VPC"
+  vpc_id      = aws_vpc.this.id
 
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.this.cidr_block]
+  }
 
-ingress {
-from_port = 0
-to_port = 0
-protocol = "-1"
-cidr_blocks = [aws_vpc.this.cidr_block]
-description = "Allow intra-vpc"
-}
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-
-egress {
-from_port = 0
-to_port = 0
-protocol = "-1"
-cidr_blocks = ["0.0.0.0/0"]
-}
+  tags = merge(var.tags, { Name = "${var.env}-vpc-sg" })
 }
