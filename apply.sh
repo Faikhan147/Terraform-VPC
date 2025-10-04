@@ -8,11 +8,16 @@ TFVARS_FILE="$ROOT_DIR/terraform.tfvars"  # single tfvars file
 echo "🔍 Initializing Terraform..."
 terraform init -reconfigure
 
-# Terraform validate & fmt
+# Terraform validate
 echo "✅ Validating configuration..."
 terraform validate
+
 echo "📝 Formatting Terraform files..."
 terraform fmt -recursive
+
+# Display workspace list
+echo "🔢 Listing available workspaces..."
+terraform workspace list
 
 # Terraform plan
 echo "📄 Creating plan..."
