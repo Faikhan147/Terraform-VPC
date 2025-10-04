@@ -17,6 +17,18 @@ fi
 echo "🔍 Initializing Terraform..."
 terraform init -reconfigure
 
+echo "✅ Validating configuration..."
+terraform validate
+
+
+echo "📝 Formatting Terraform files..."
+terraform fmt -recursive
+
+
+# Display workspace list
+echo "🔢 Listing available workspaces..."
+terraform workspace list
+
 # Destroy VPC
 echo "💣 Destroying VPC..."
 terraform destroy -var-file="$TFVARS_FILE" -auto-approve
