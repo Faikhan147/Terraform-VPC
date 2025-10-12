@@ -4,7 +4,7 @@ terraform {
   backend "s3" {
     bucket         = "terraform-backend-all-envs"
     key            = "vpc/terraform.tfstate"
-    region         = "us-east-1"
+    region         = "ap-southeast-2"
     encrypt        = true
     dynamodb_table = "terraform-locks-vpc"
   }
